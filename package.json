@@ -1,6 +1,6 @@
 {
   "name": "hubot-chatwork",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A hubot adapter for chatwork",
   "main": "src/chatwork",
   "scripts": {
@@ -11,22 +11,6 @@
       "pattern": "hubot-chatwork/src",
       "loader": "./node-loaders/coffee-script"
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/akiomik/hubot-chatwork.git"
-  },
-  "bugs": {
-    "url": "https://github.com/akiomik/hubot-chatwork/issues"
-  },
-  "keywords": [
-    "hubot",
-    "chatwork"
-  ],
-  "author": {
-    "name": "Akiomi Kamakura",
-    "email": "akiomik@gmail.com",
-    "url": "https://github.com/akiomik"
   },
   "license": "MIT",
   "readmeFilename": "README.md",

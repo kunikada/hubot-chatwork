@@ -21,13 +21,10 @@ class Chatwork extends Adapter
   run: ->
     options =
       token: process.env.HUBOT_CHATWORK_TOKEN
-      rooms: process.env.HUBOT_CHATWORK_ROOMS
-      apiRate: process.env.HUBOT_CHATWORK_API_RATE
 
     bot = new ChatworkStreaming(options, @robot)
 
-    for roomId in bot.rooms
-      bot.Room(roomId).Messages().listen()
+    bot.listen()
 
     bot.on 'message', (roomId, id, account, body, sendAt, updatedAt) =>
       user = @robot.brain.userForId account.account_id,
@@ -45,19 +42,14 @@ exports.use = (robot) ->
 
 class ChatworkStreaming extends EventEmitter
   constructor: (options, @robot) ->
-    unless options.token? and options.rooms? and options.apiRate?
+    unless options.token?
       @robot.logger.error \
-        'Not enough parameters provided. I need a token, rooms and API rate'
+        'Not enough parameters provided. I need a token'
       process.exit 1
 
     @token = options.token
-    @rooms = options.rooms.split ','
     @host = 'api.chatwork.com'
-    @rate = parseInt options.apiRate, 10
-
-    unless @rate > 0
-      @robot.logger.error 'API rate must be greater then 0'
-      process.exit 1
+    @waitTime = 0
 
   Me: (callback) =>
     @get "/me", "", callback
@@ -133,19 +125,16 @@ class ChatworkStreaming extends EventEmitter
         body = "body=#{text}"
         @post "#{baseUrl}/messages", body, callback
 
-      listen: =>
-        timeout = =>
-          @Room(id).Messages().show (err, messages) =>
-            for message in messages
-              @emit 'message',
-                id,
-                message.message_id,
-                message.account,
-                message.body,
-                message.send_time,
-                message.update_time
-            setTimeout timeout, 1000 / (@rate / (60 * 60))
-        timeout()
+      open: =>
+        @Room(id).Messages().show (err, messages) =>
+          for message in messages
+            @emit 'message',
+              id,
+              message.message_id,
+              message.account,
+              message.body,
+              message.send_time,
+              message.update_time
 
     Message: (mid) =>
       show: (callback) =>
@@ -197,6 +186,11 @@ class ChatworkStreaming extends EventEmitter
     @request "DELETE", path, body, callback
 
   request: (method, path, body, callback) ->
+    if @waitTime > 0
+      delay = @waitTime * 1000
+      @waitTime = 0
+      setTimeout @request, delay, method, path, body, callback
+
     logger = @robot.logger
 
     headers =
@@ -215,13 +209,13 @@ class ChatworkStreaming extends EventEmitter
     body = new Buffer body
     options.headers["Content-Length"] = body.length
 
-    request = HTTPS.request options, (response) ->
+    request = HTTPS.request options, (response) =>
       data = ""
 
       response.on "data", (chunk) ->
         data += chunk
 
-      response.on "end", ->
+      response.on "end", =>
         if response.statusCode >= 400
           switch response.statusCode
             when 401
@@ -229,6 +223,9 @@ class ChatworkStreaming extends EventEmitter
             else
               logger.error "Chatwork HTTPS status code: #{response.statusCode}"
               logger.error "Chatwork HTTPS response data: #{data}"
+
+        if response.headers['x-ratelimit-remaining'] is '0'
+          @waitTime = response.headers['x-ratelimit-reset'] - (Date.now() / 1000 | 0)
 
         if callback
           json = try JSON.parse data catch e then data or {}
@@ -243,3 +240,12 @@ class ChatworkStreaming extends EventEmitter
     request.on "error", (err) ->
       logger.error "Chatwork request error: #{err}"
 
+  listen: ->
+    timeout = =>
+      @Rooms().show (err, rooms) =>
+        now = Date.now() / 1000 | 0
+        for room in rooms
+          continue if room.last_update_time < now - 7 # interval + buffer
+          @Room(room.room_id).Messages().open()
+      setTimeout timeout, 5 * 1000 # interval
+    timeout()
