@@ -14,6 +14,7 @@ yo hubot --adapter chatwork
 2. Set environment variables.
   ```sh
 export HUBOT_CHATWORK_TOKEN="DEADBEEF" # see http://developer.chatwork.com/ja/authenticate.html
+export HUBOT_CHATWORK_INTERVAL_SEC="10" # option (default: 5)
   ```
 
 3. Run hubot with chatwork adapter.

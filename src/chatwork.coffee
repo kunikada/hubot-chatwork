@@ -21,6 +21,7 @@ class Chatwork extends Adapter
   run: ->
     options =
       token: process.env.HUBOT_CHATWORK_TOKEN
+      interval: process.env.HUBOT_CHATWORK_INTERVAL_SEC or 5
 
     bot = new ChatworkStreaming(options, @robot)
 
@@ -48,6 +49,7 @@ class ChatworkStreaming extends EventEmitter
       process.exit 1
 
     @token = options.token
+    @interval = options.interval
     @host = 'api.chatwork.com'
     @waitTime = 0
 
@@ -245,7 +247,7 @@ class ChatworkStreaming extends EventEmitter
       @Rooms().show (err, rooms) =>
         now = Date.now() / 1000 | 0
         for room in rooms
-          continue if room.last_update_time < now - 7 # interval + buffer
+          continue if room.last_update_time < now - @interval
           @Room(room.room_id).Messages().open()
-      setTimeout timeout, 5 * 1000 # interval
+      setTimeout timeout, @interval * 1000
     timeout()
