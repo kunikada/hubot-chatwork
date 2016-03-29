@@ -12,6 +12,10 @@
       "loader": "./node-loaders/coffee-script"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kunikada/hubot-chatwork.git"
+  },
   "license": "MIT",
   "readmeFilename": "README.md",
   "devDependencies": {
